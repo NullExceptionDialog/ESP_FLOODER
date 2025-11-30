@@ -136,11 +136,11 @@ public:
   MyServerCallbacks(int index) : serverIndex(index) {}
   
   void onConnect(BLEServer* pServer) {
-    Serial.printf("📱 BLE Server %d: Device connected\n", serverIndex + 1);
+    Serial.printf("BLE Server %d: Device connected\n", serverIndex + 1);
   }
 
   void onDisconnect(BLEServer* pServer) {
-    Serial.printf("📱 BLE Server %d: Device disconnected, restarting advertising\n", serverIndex + 1);
+    Serial.printf("BLE Server %d: Device disconnected, restarting advertising\n", serverIndex + 1);
     pServer->getAdvertising()->start();
   }
 };
@@ -156,13 +156,17 @@ public:
   void onWrite(BLECharacteristic *pCharacteristic) {
     String value = pCharacteristic->getValue();
     if (value.length() > 0) {
-      Serial.printf("✏️ BLE Characteristic %d received: %s\n", charIndex + 1, value.c_str());
+      Serial.printf("BLE Characteristic %d received: ", charIndex + 1);
+      for (int i = 0; i < value.length(); i++) {
+        Serial.print(value[i]);
+      }
+      Serial.println();
     }
   }
 };
 
 void setupSoftAPs() {
-  Serial.println("📡 Setting up 15 SoftAP hotspots...");
+  Serial.println("Setting up 15 SoftAP hotspots...");
   
   // Use non-overlapping WiFi channels for better performance
   int wifi_channels[] = {1, 6, 11, 3, 8, 13, 2, 7, 12, 4, 9, 14, 5, 10, 1};
@@ -173,30 +177,30 @@ void setupSoftAPs() {
     
     // Start SoftAP (no password - open networks)
     if (WiFi.softAP(softAP_ssids[i], NULL, wifi_channels[i])) {
-      Serial.printf("✅ SoftAP %d started successfully!\n", i + 1);
-      Serial.printf("   📶 SSID: %s\n", softAP_ssids[i]);
-      Serial.printf("   🔓 Security: Open (No Password)\n");
-      Serial.printf("   🌐 IP: %s\n", local_IPs[i].toString().c_str());
-      Serial.printf("   📻 Channel: %d\n", wifi_channels[i]);
+      Serial.printf("SoftAP %d started successfully!\n", i + 1);
+      Serial.printf("  SSID: %s\n", softAP_ssids[i]);
+      Serial.printf("  Security: Open (No Password)\n");
+      Serial.printf("  IP: %s\n", local_IPs[i].toString().c_str());
+      Serial.printf("  Channel: %d\n", wifi_channels[i]);
     } else {
-      Serial.printf("❌ Failed to start SoftAP %d!\n", i + 1);
+      Serial.printf("Failed to start SoftAP %d!\n", i + 1);
     }
     
     delay(150); // Small delay between AP startups
   }
   
-  Serial.println("🎉 All 15 SoftAPs are running! Scan for WiFi to see:");
-  Serial.println("   MUSTAFA WIFI and 14 other realistic networks!");
-  Serial.println("==================================================\n");
+  Serial.println("All 15 SoftAPs are running! Scan for WiFi to see:");
+  Serial.println("MUSTAFA WIFI and 14 other realistic networks!");
+  Serial.println("================================================\n");
 }
 
 void setupBLE() {
-  Serial.println("📱 Setting up 15 BLE servers...");
-  
-  // Initialize BLE device
-  BLEDevice::init("Necvox");
+  Serial.println("Setting up 15 BLE servers...");
   
   for (int i = 0; i < 15; i++) {
+    // Initialize BLE device with the specific name
+    BLEDevice::init(ble_device_names[i]);
+    
     // Create BLE Server
     pServers[i] = BLEDevice::createServer();
     pServers[i]->setCallbacks(new MyServerCallbacks(i));
@@ -220,45 +224,42 @@ void setupBLE() {
     pServices[i]->start();
     
     // Start advertising
-    BLEAdvertising* pAdvertising = pServers[i]->getAdvertising();
+    BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(ble_service_uuids[i]);
     pAdvertising->setScanResponse(true);
     pAdvertising->setMinPreferred(0x06);
     pAdvertising->setMinPreferred(0x12);
-    
-    // Set specific device name
-    pAdvertising->setName(ble_device_names[i]);
     pAdvertising->start();
     
-    Serial.printf("✅ BLE Server %d started: %s\n", i + 1, ble_device_names[i]);
+    Serial.printf("BLE Server %d started: %s\n", i + 1, ble_device_names[i]);
     
     delay(150); // Small delay between BLE server startups
   }
   
-  Serial.println("🎉 All 15 BLE servers are running!");
-  Serial.println("==================================\n");
+  Serial.println("All 15 BLE servers are running!");
+  Serial.println("==============================\n");
 }
 
 void printNetworkStatus() {
-  Serial.println("\n=== 📊 NETWORK STATUS ===");
+  Serial.println("\n=== NETWORK STATUS ===");
   
   // Print SoftAP status
-  Serial.println("📡 SoftAP Hotspots:");
+  Serial.println("SoftAP Hotspots:");
   for (int i = 0; i < 15; i++) {
     int clients = WiFi.softAPgetStationNum();
-    Serial.printf("   %-20s - %s - %d client(s)\n", 
+    Serial.printf("  %-20s - %s - %d client(s)\n", 
                   softAP_ssids[i], 
                   local_IPs[i].toString().c_str(),
                   clients);
   }
   
-  Serial.println("📱 BLE Servers:");
+  Serial.println("BLE Servers:");
   for (int i = 0; i < 15; i++) {
-    Serial.printf("   %s\n", ble_device_names[i]);
+    Serial.printf("  %s\n", ble_device_names[i]);
   }
   
-  Serial.printf("💾 Free Heap: %d bytes\n", ESP.getFreeHeap());
-  Serial.println("========================\n");
+  Serial.printf("Free Heap: %lu bytes\n", ESP.getFreeHeap());
+  Serial.println("======================\n");
 }
 
 void updateBLECharacteristics() {
@@ -280,12 +281,10 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   
-  Serial.println("\n" 
-                 "╔══════════════════════════════════════╗\n"
-                 "║       ESP32 30 Hotspots Project      ║\n" 
-                 "║       15 WiFi + 15 BLE Devices       ║\n"
-                 "║          MUSTAFA WIFI Ready          ║\n"
-                 "╚══════════════════════════════════════╝\n");
+  Serial.println("\nESP32 30 Hotspots Project");
+  Serial.println("15 WiFi + 15 BLE Devices");
+  Serial.println("MUSTAFA WIFI Ready");
+  Serial.println("========================");
 
   // Set WiFi to AP mode
   WiFi.mode(WIFI_AP);
@@ -294,11 +293,11 @@ void setup() {
   setupSoftAPs();
   setupBLE();
   
-  Serial.println("🚀 SYSTEM FULLY OPERATIONAL!");
-  Serial.println("✅ 15 WiFi Access Points (including MUSTAFA WIFI)");
-  Serial.println("✅ 15 BLE Servers advertising");
-  Serial.println("✅ All networks are OPEN - No passwords");
-  Serial.println("✅ Ready for scanning!\n");
+  Serial.println("SYSTEM FULLY OPERATIONAL!");
+  Serial.println("15 WiFi Access Points (including MUSTAFA WIFI)");
+  Serial.println("15 BLE Servers advertising");
+  Serial.println("All networks are OPEN - No passwords");
+  Serial.println("Ready for scanning!\n");
 }
 
 void loop() {
